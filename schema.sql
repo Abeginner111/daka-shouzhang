@@ -30,7 +30,7 @@
 
 create table if not exists public.love_items (
   user_id     uuid        not null references auth.users(id) on delete cascade,
-  no          integer     not null check (no between 1 and 100),
+  no          integer     not null check (no between 1 and 9999),
   title       text        not null default '',
   category    text        not null default '',
   status      text        not null default '想去做',
@@ -41,6 +41,10 @@ create table if not exists public.love_items (
   updated_at  timestamptz not null default now(),
   primary key (user_id, no)
 );
+
+-- 编号 1–9999：预置 001–100，页面新增卡片自动取「当前最大编号 + 1」。
+-- 兼容早期建表时 1–100 的旧约束，可重复执行。
+alter table public.love_items drop constraint if exists love_items_no_check;
 
 create table if not exists public.love_config (
   user_id uuid primary key references auth.users(id) on delete cascade,
