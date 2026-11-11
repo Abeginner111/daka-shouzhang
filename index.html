@@ -775,6 +775,199 @@ footer.site::before{content:"\2665 \2665 \2665";display:block;font-size:10px;let
   .stat-chapter.rm-levelup{animation:none!important;}
 }
 
+/* ==================================================================
+   照片体验增强层 · Photo View Layer（CSS）
+   1) 记录弹窗里的照片区：从 86×64 的小方块改成自适应大图网格
+   2) 点击任意照片 → 全屏预览（大图 + 左右切换 + 键盘/滑动）
+   3) 上传入口改成可拖拽 / 可粘贴的大虚线卡片
+   4) 章节页「最近珍藏」里的照片也放大、可点开
+   ================================================================== */
+
+/* ---------- 1. 照片区头部：计数 + 提示 ---------- */
+.photo-area{display:flex;flex-direction:column;gap:11px;}
+.pv-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-height:16px;}
+.pv-count{font-size:12px;color:var(--ink-faint);letter-spacing:.6px;}
+.pv-count b{color:#a85e76;font-weight:600;font-size:13.5px;font-family:Georgia,"Times New Roman",serif;margin:0 2px;}
+.pv-tip{font-size:11.5px;color:#c3a7ab;letter-spacing:.4px;}
+
+/* ---------- 2. 缩略图网格 ---------- */
+.photo-thumbs{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;
+  margin-top:-2px;
+}
+@media (max-width:560px){
+  .photo-thumbs{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;}
+}
+
+.thumb{
+  position:relative;width:auto;height:auto;aspect-ratio:4/3;
+  border-radius:13px;overflow:hidden;border:1px solid #f2e3e2;
+  background:linear-gradient(160deg,#fdf6f5,#fbeef0);
+  cursor:zoom-in;box-shadow:0 2px 9px rgba(196,118,138,.10);
+  transition:transform .24s var(--ease-out),box-shadow .24s var(--ease-out),border-color .24s var(--ease-soft);
+  animation:pvThumbIn .34s var(--ease-out) both;
+}
+.thumb img{
+  width:100%;height:100%;object-fit:cover;display:block;
+  transition:transform .5s var(--ease-out),filter .3s var(--ease-soft);
+}
+@keyframes pvThumbIn{from{opacity:0;transform:scale(.92) translateY(6px)}to{opacity:1;transform:none}}
+
+/* 第一张 = 封面 */
+.thumb.is-cover::before{
+  content:"封面";position:absolute;left:6px;bottom:6px;z-index:2;
+  font-size:10px;line-height:1;letter-spacing:1px;color:#fff;
+  padding:3px 6px;border-radius:999px;
+  background:linear-gradient(135deg,rgba(224,131,156,.92),rgba(183,99,124,.92));
+  box-shadow:0 1px 5px rgba(150,88,105,.28);
+  pointer-events:none;
+}
+/* 序号：右上角淡显 */
+.thumb:not(.is-cover)::before{
+  content:attr(data-idx);position:absolute;right:6px;bottom:6px;z-index:2;
+  font-size:9.5px;line-height:1;color:#fff;font-family:Georgia,serif;
+  padding:3px 5px;border-radius:999px;background:rgba(74,58,61,.42);
+  backdrop-filter:blur(3px);pointer-events:none;
+}
+
+/* 删除按钮：桌面悬停出现，触屏常显 */
+.thumb .del{
+  position:absolute;top:6px;right:6px;z-index:3;
+  width:25px;height:25px;border-radius:50%;border:none;
+  background:rgba(58,40,45,.58);color:#fff;font-size:12px;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(6px);cursor:pointer;
+  opacity:0;transform:scale(.82);
+  transition:opacity .2s var(--ease-soft),transform .2s var(--ease-out),background .2s;
+}
+.thumb .del:hover{background:#b7657a;transform:scale(1.06);}
+@media (hover:hover) and (pointer:fine){
+  .thumb:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(196,118,138,.22);border-color:#eec6d1;}
+  .thumb:hover img{transform:scale(1.07);}
+  .thumb:hover .del,.thumb:focus-visible .del{opacity:1;transform:scale(1);}
+}
+@media (hover:none){
+  .thumb .del{opacity:1;transform:none;}
+}
+.thumb:focus-visible{outline:2px solid #dca3b3;outline-offset:2px;}
+
+/* ---------- 3. 上传入口：可拖拽的大虚线卡片 ---------- */
+.photo-add{
+  align-self:stretch;display:flex;align-items:center;justify-content:center;gap:10px;
+  border:1.5px dashed #eecdD6;border-radius:13px;
+  background:linear-gradient(160deg,#fffaf9,#fdf2f4);
+  padding:13px 16px;font-family:inherit;cursor:pointer;
+  transition:border-color .2s var(--ease-soft),background .2s var(--ease-soft),transform .2s var(--ease-out);
+}
+.photo-add:hover{border-color:#ddA3b3;background:linear-gradient(160deg,#fff7f8,#fdeef2);transform:translateY(-1px);}
+.photo-add.dragover{border-color:#c4768a;background:#fbe6ec;transform:scale(1.012);}
+.photo-add.dragover .pv-add-icon{transform:translateY(-2px) scale(1.08);}
+.pv-add-icon{display:flex;color:#c98da0;transition:transform .25s var(--ease-out);}
+.pv-add-main{display:flex;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.35;}
+.pv-add-main b{font-size:13px;font-weight:500;color:#a85e76;letter-spacing:.5px;}
+.pv-add-main i{font-style:normal;font-size:11px;color:#c3a7ab;letter-spacing:.3px;}
+@media (max-width:560px){
+  .pv-add-main i{font-size:10.5px;}
+}
+
+/* 空状态 */
+.photo-thumbs:empty + .photo-add{margin-top:2px;}
+
+/* ---------- 4. 全屏预览 ---------- */
+.pv-viewer{
+  position:fixed;inset:0;z-index:9500;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;
+  transition:opacity .26s var(--ease-soft);
+}
+.pv-viewer.show{opacity:1;pointer-events:auto;}
+.pv-backdrop{
+  position:absolute;inset:0;cursor:zoom-out;
+  background:radial-gradient(circle at 50% 38%, rgba(72,48,56,.82), rgba(32,22,26,.92));
+  backdrop-filter:blur(9px);
+  -webkit-backdrop-filter:blur(9px);
+}
+.pv-stage{
+  position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;
+  max-width:min(92vw,1120px);max-height:88vh;
+  transform:scale(.94);opacity:.6;
+  transition:transform .38s var(--ease-out),opacity .3s var(--ease-soft);
+}
+.pv-viewer.show .pv-stage{transform:scale(1);opacity:1;}
+.pv-img{
+  display:block;max-width:100%;max-height:76vh;
+  border-radius:14px;object-fit:contain;background:#1d1518;
+  box-shadow:0 30px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.09);
+  animation:pvImgIn .42s var(--ease-out) both;
+}
+@keyframes pvImgIn{from{opacity:.4;transform:scale(.985)}to{opacity:1;transform:none}}
+.pv-cap{
+  display:flex;align-items:center;gap:12px;max-width:100%;
+  color:rgba(255,255,255,.88);font-size:13px;letter-spacing:.5px;
+}
+.pv-name{
+  max-width:62vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-family:var(--font-hand);
+}
+.pv-btn{
+  position:absolute;z-index:2;width:46px;height:46px;border-radius:50%;border:none;
+  background:rgba(255,255,255,.15);color:#fff;font-size:22px;line-height:1;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  backdrop-filter:blur(7px);
+  transition:background .2s var(--ease-soft),transform .2s var(--ease-out);
+}
+.pv-btn:hover{background:rgba(255,255,255,.28);transform:scale(1.07);}
+.pv-btn:active{transform:scale(.95);}
+.pv-close{top:20px;right:20px;font-size:16px;}
+.pv-prev{left:20px;top:50%;transform:translateY(-50%);}
+.pv-next{right:20px;top:50%;transform:translateY(-50%);}
+.pv-prev:hover,.pv-next:hover{transform:translateY(-50%) scale(1.07);}
+.pv-index{
+  position:absolute;left:50%;bottom:22px;transform:translateX(-50%);
+  font-size:12px;letter-spacing:2.5px;font-family:Georgia,"Times New Roman",serif;
+  color:rgba(255,255,255,.78);pointer-events:none;
+}
+.pv-viewer.single .pv-prev,.pv-viewer.single .pv-next,.pv-viewer.single .pv-index{display:none;}
+html.pv-lock,html.pv-lock body{overflow:hidden!important;}
+
+@media (max-width:720px){
+  .pv-btn{width:40px;height:40px;font-size:19px;}
+  .pv-prev{left:8px;} .pv-next{right:8px;}
+  .pv-close{top:12px;right:12px;}
+  .pv-img{max-height:72vh;border-radius:11px;}
+  .pv-index{bottom:16px;}
+  .pv-name{max-width:70vw;font-size:12px;}
+}
+
+/* ---------- 5. 章节页「最近珍藏」的照片 ---------- */
+.tl-photo{
+  position:relative;
+  width:104px;height:78px;border-radius:13px;cursor:zoom-in;overflow:hidden;
+  border:1px solid #f2e3e2;box-shadow:0 2px 9px rgba(196,118,138,.10);
+  transition:transform .24s var(--ease-out),box-shadow .24s var(--ease-out);
+}
+.tl-photo.multi::after{
+  content:attr(data-more);position:absolute;right:6px;bottom:6px;
+  font-size:10px;line-height:1;letter-spacing:.5px;color:#fff;
+  padding:3px 6px;border-radius:999px;background:rgba(74,58,61,.55);
+  backdrop-filter:blur(4px);pointer-events:none;
+}
+.tl-photo img{transition:transform .5s var(--ease-out);}
+@media (hover:hover) and (pointer:fine){
+  .tl-photo:hover{transform:translateY(-2px);box-shadow:0 9px 22px rgba(196,118,138,.20);}
+  .tl-photo:hover img{transform:scale(1.06);}
+}
+@media (max-width:720px){
+  .tl-photo{width:84px;height:64px;border-radius:11px;}
+}
+
+/* ---------- 6. 减少动效 ---------- */
+@media (prefers-reduced-motion:reduce){
+  .thumb,.pv-img{animation:none!important;}
+  .pv-stage{transition:none;}
+  .thumb:hover,.tl-photo:hover{transform:none;}
+}
+
 </style>
 </head>
 <body>
@@ -3383,6 +3576,504 @@ function doDelete(){
   } catch(e){}
 
   boot();
+})();
+
+</script>
+<script>
+/* ==================================================================
+   照片体验增强层 · Photo View Layer（JS）
+   · 把记录弹窗的照片区升级成自适应大图网格 + 计数 + 封面标记
+   · 点击任意缩略图 → 全屏预览（大图 / 左右切换 / 键盘 ← → Esc / 手机左右滑）
+   · 上传入口支持拖拽图片、Ctrl+V 粘贴
+   · 章节页「最近珍藏」的照片同样可以点开
+   全部为增量增强：不改任何业务逻辑，任何一步失败都只是退回原样。
+   ================================================================== */
+(function(){
+  "use strict";
+  var D = document, W = window, B = D && D.body;
+  if(!D || !B) return;
+
+  var MAX_PHOTOS = 9;
+
+  function qs(s){ try { return D.querySelector(s); } catch(e){ return null; } }
+  function qsa(s){ try { return Array.prototype.slice.call(D.querySelectorAll(s)); } catch(e){ return []; } }
+  function esc(s){
+    return String(s == null ? "" : s)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+  }
+  function toast(msg){
+    try { if(typeof showToast === "function"){ showToast(msg); return; } } catch(e){}
+  }
+  function safe(fn){ try { return fn(); } catch(e){} }
+
+  var ICON_CAM = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" '
+    + 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'
+    + '<path d="M3 8.6A2.6 2.6 0 0 1 5.6 6h1.1l1.1-1.7c.3-.5.9-.8 1.5-.8h5.4c.6 0 1.2.3 1.5.8L17.3 6h1.1A2.6 2.6 0 0 1 21 8.6v7.8A2.6 2.6 0 0 1 18.4 19H5.6A2.6 2.6 0 0 1 3 16.4z"/>'
+    + '<circle cx="12" cy="12.4" r="3.3"/></svg>';
+
+  /* ---------------- 当前记录里的照片 ---------------- */
+  function currentPhotos(){
+    try {
+      if(typeof tmpPhotos !== "undefined" && tmpPhotos && typeof tmpPhotos.length === "number") return tmpPhotos;
+    } catch(e){}
+    return null;
+  }
+  function photoCount(){
+    var list = currentPhotos();
+    if(list) return list.length;
+    return qsa("#m-photos .thumb").length;
+  }
+
+  /* ---------------- 照片区头部 / 计数 / 上传按钮 ---------------- */
+  function ensureHead(){
+    var area = qs(".photo-area");
+    if(!area) return null;
+    var head = area.querySelector(".pv-head");
+    if(head) return head;
+    head = D.createElement("div");
+    head.className = "pv-head";
+    head.innerHTML = '<span class="pv-count"></span><span class="pv-tip"></span>';
+    var label = area.querySelector("label");
+    if(label && label.parentNode === area) area.insertBefore(head, label.nextSibling);
+    else area.insertBefore(head, area.firstChild);
+    return head;
+  }
+
+  function refresh(){
+    var area = qs(".photo-area");
+    if(!area) return;
+    ensureHead();
+
+    var n = photoCount();
+    var cnt = area.querySelector(".pv-count");
+    if(cnt && cnt.innerHTML !== "") { /* 保持 DOM 稳定，下面统一写 */ }
+    if(cnt) cnt.innerHTML = "已添加 <b>" + n + "</b> / " + MAX_PHOTOS;
+
+    var tip = area.querySelector(".pv-tip");
+    if(tip){
+      if(n === 0) tip.textContent = "第一张会作为封面";
+      else if(n < MAX_PHOTOS) tip.textContent = "点击照片可放大";
+      else tip.textContent = "已放满 9 张";
+    }
+
+    // 缩略图：序号、封面标记、可访问性
+    var thumbs = qsa("#m-photos .thumb");
+    for(var i = 0; i < thumbs.length; i++){
+      var t = thumbs[i];
+      t.setAttribute("data-idx", String(i + 1));
+      t.setAttribute("role", "button");
+      t.setAttribute("tabindex", "0");
+      t.setAttribute("aria-label", "查看第 " + (i + 1) + " 张照片");
+      if(!t.getAttribute("title")) t.setAttribute("title", "点击放大");
+      if(i === 0) t.classList.add("is-cover");
+      else t.classList.remove("is-cover");
+    }
+
+    // 上传入口文案 / 满员状态
+    var add = area.querySelector(".photo-add");
+    if(add){
+      if(!add.querySelector(".pv-add-icon")){
+        var on = add.getAttribute("onclick") || "";
+        add.innerHTML = '<span class="pv-add-icon">' + ICON_CAM + '</span>'
+          + '<span class="pv-add-main"><b>添加照片</b><i>可拖拽到这里 · 也可以 Ctrl+V 粘贴</i></span>';
+        if(on) add.setAttribute("onclick", on);
+      }
+      var full = n >= MAX_PHOTOS;
+      add.disabled = full;
+      add.style.opacity = full ? ".55" : "";
+      add.style.cursor = full ? "not-allowed" : "pointer";
+      var sub = add.querySelector(".pv-add-main i");
+      if(sub) sub.textContent = full ? "已经放满 9 张" : "可拖拽到这里 · 也可以 Ctrl+V 粘贴";
+    }
+  }
+
+  /* ---------------- 全屏预览 ---------------- */
+  var viewer = null, vList = [], vIdx = 0;
+
+  function buildViewer(){
+    if(viewer) return viewer;
+    var el = D.createElement("div");
+    el.className = "pv-viewer";
+    el.id = "pv-viewer";
+    el.setAttribute("role", "dialog");
+    el.setAttribute("aria-modal", "true");
+    el.setAttribute("aria-hidden", "true");
+    el.setAttribute("aria-label", "照片预览");
+    el.innerHTML =
+      '<div class="pv-backdrop" data-pv-close></div>'
+      + '<div class="pv-stage">'
+      +   '<img class="pv-img" alt="">'
+      +   '<div class="pv-cap"><span class="pv-name"></span></div>'
+      + '</div>'
+      + '<button class="pv-btn pv-close" type="button" data-pv-close aria-label="关闭预览">✕</button>'
+      + '<button class="pv-btn pv-prev" type="button" aria-label="上一张">‹</button>'
+      + '<button class="pv-btn pv-next" type="button" aria-label="下一张">›</button>'
+      + '<div class="pv-index"><span class="pv-now">1</span> / <span class="pv-total">1</span></div>';
+    B.appendChild(el);
+    viewer = el;
+
+    el.addEventListener("click", function(e){
+      var t = e.target;
+      if(!t || !t.closest) return;
+      if(t.closest("[data-pv-close]")){ closeViewer(); return; }
+      if(t.closest(".pv-prev")){ step(-1); return; }
+      if(t.closest(".pv-next")){ step(1); return; }
+    });
+
+    // 手机上左右滑动切换
+    var sx = 0, sy = 0, moved = false;
+    el.addEventListener("touchstart", function(e){
+      var t = e.changedTouches && e.changedTouches[0];
+      if(!t) return;
+      sx = t.clientX; sy = t.clientY; moved = false;
+    }, {passive:true});
+    el.addEventListener("touchmove", function(e){
+      var t = e.changedTouches && e.changedTouches[0];
+      if(!t) return;
+      if(Math.abs(t.clientX - sx) > 14) moved = true;
+    }, {passive:true});
+    el.addEventListener("touchend", function(e){
+      var t = e.changedTouches && e.changedTouches[0];
+      if(!t || !moved) return;
+      var dx = t.clientX - sx, dy = t.clientY - sy;
+      if(Math.abs(dx) > 52 && Math.abs(dx) > Math.abs(dy)) step(dx < 0 ? 1 : -1);
+    }, {passive:true});
+
+    return el;
+  }
+
+  function renderViewer(){
+    if(!viewer) return;
+    var it = vList[vIdx] || {};
+    var img = viewer.querySelector(".pv-img");
+    if(img){
+      img.src = it.src || "";
+      img.alt = it.title || "照片";
+    }
+    var nm = viewer.querySelector(".pv-name");
+    if(nm) nm.textContent = it.title || "";
+    var now = viewer.querySelector(".pv-now");
+    if(now) now.textContent = String(vIdx + 1);
+    var total = viewer.querySelector(".pv-total");
+    if(total) total.textContent = String(vList.length);
+    viewer.classList.toggle("single", vList.length <= 1);
+
+    // 预热前后两张，切换时不闪
+    [vIdx - 1, vIdx + 1].forEach(function(i){
+      var item = vList[(i + vList.length) % vList.length];
+      if(item && item.src && vList.length > 1){ var pre = new Image(); pre.src = item.src; }
+    });
+  }
+
+  function openViewer(list, index){
+    list = (list || []).filter(function(x){ return x && x.src; });
+    if(!list.length) return;
+    buildViewer();
+    vList = list;
+    vIdx = Math.max(0, Math.min(index || 0, list.length - 1));
+    renderViewer();
+    viewer.classList.add("show");
+    viewer.setAttribute("aria-hidden", "false");
+    D.documentElement.classList.add("pv-lock");
+    safe(function(){ viewer.querySelector(".pv-close").focus(); });
+  }
+
+  function closeViewer(){
+    if(!viewer) return;
+    viewer.classList.remove("show");
+    viewer.setAttribute("aria-hidden", "true");
+    D.documentElement.classList.remove("pv-lock");
+    setTimeout(function(){
+      if(!viewer.classList.contains("show")){
+        var img = viewer.querySelector(".pv-img");
+        if(img) img.removeAttribute("src");
+      }
+    }, 320);
+  }
+
+  function step(d){
+    if(vList.length <= 1) return;
+    vIdx = (vIdx + d + vList.length) % vList.length;
+    renderViewer();
+  }
+
+  /* ---------------- 打开预览的入口 ---------------- */
+  function modalPhotoList(){
+    var out = [];
+    var list = currentPhotos();
+    if(list && list.length){
+      for(var i = 0; i < list.length; i++){
+        var p = list[i] || {};
+        out.push({ src: p.imageUrl || "", title: p.title || ("照片 " + (i + 1)) });
+      }
+      return out;
+    }
+    qsa("#m-photos .thumb").forEach(function(t, i){
+      var im = t.querySelector("img");
+      out.push({ src: im ? im.getAttribute("src") : "", title: "照片 " + (i + 1) });
+    });
+    return out;
+  }
+
+  function timelinePhotoList(){
+    var cells = qsa(".tl-photo");
+    return cells.map(function(cell){
+      var im = cell.querySelector("img");
+      var item = cell.closest ? cell.closest(".tl-item") : null;
+      var nameEl = item ? item.querySelector(".tl-name") : null;
+      return {
+        src: im ? (im.getAttribute("src") || "") : "",
+        title: nameEl ? nameEl.textContent : ""
+      };
+    });
+  }
+
+  function bindOpeners(){
+    D.addEventListener("click", function(e){
+      var t = e.target;
+      if(!t || !t.closest) return;
+
+      if(t.closest(".thumb .del")) return;          // 删除按钮不触发预览
+
+      var thumb = t.closest("#m-photos .thumb");
+      if(thumb){
+        var idx = parseInt(thumb.getAttribute("data-idx") || "1", 10) - 1;
+        openViewer(modalPhotoList(), idx);
+      }
+    });
+
+    // 章节页时间线的照片：必须在捕获阶段拦截，
+    // 否则会先冒泡触发整行的 onclick="openModal(id)"，预览背后还弹出一个记录弹窗
+    D.addEventListener("click", function(e){
+      var t = e.target;
+      if(!t || !t.closest) return;
+      var tl = t.closest(".tl-photo");
+      if(!tl) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var cells = qsa(".tl-photo");
+      openViewer(timelinePhotoList(), cells.indexOf(tl));
+    }, true);
+
+    // 键盘可访问：缩略图回车/空格打开
+    D.addEventListener("keydown", function(e){
+      if(!e || (e.key !== "Enter" && e.key !== " ")) return;
+      var t = e.target;
+      if(!t || !t.closest) return;
+      var thumb = t.closest("#m-photos .thumb");
+      if(!thumb) return;
+      e.preventDefault();
+      var idx = parseInt(thumb.getAttribute("data-idx") || "1", 10) - 1;
+      openViewer(modalPhotoList(), idx);
+    });
+
+    // 预览里的键盘操作
+    D.addEventListener("keydown", function(e){
+      if(!viewer || !viewer.classList.contains("show")) return;
+      if(e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); closeViewer(); }
+      else if(e.key === "ArrowLeft"){ e.preventDefault(); step(-1); }
+      else if(e.key === "ArrowRight"){ e.preventDefault(); step(1); }
+    }, true);
+  }
+
+  /* ---------------- 拖拽 / 粘贴上传 ---------------- */
+  function imageFiles(list){
+    var out = [];
+    try {
+      for(var i = 0; i < list.length; i++){
+        var f = list[i];
+        if(f && /^image\//.test(f.type || "")) out.push(f);
+      }
+    } catch(e){}
+    return out;
+  }
+
+  function feedFiles(files){
+    var picked = imageFiles(files || []);
+    if(!picked.length) return;
+    var room = MAX_PHOTOS - photoCount();
+    if(room <= 0){ toast("每条记录最多 9 张照片"); return; }
+    var use = picked.slice(0, room);
+    // 复用原有的压缩 + IndexedDB 暂存逻辑
+    safe(function(){ if(typeof cachePendingPhotos === "function") cachePendingPhotos(use); });
+    var remain = use.length;
+    var done = function(){
+      if(--remain > 0) return;
+      safe(function(){ renderModalPhotos(); });
+    };
+    use.forEach(function(f){
+      try {
+        shrinkFile(f, function(b64, type, name){
+          if(b64){
+            safe(function(){ tmpPhotos.push({ title: name || "照片", imageUrl: "data:" + type + ";base64," + b64 }); });
+          } else {
+            toast("照片处理失败");
+          }
+          done();
+        });
+      } catch(e){ done(); }
+    });
+    if(picked.length > room) toast("每条记录最多 9 张，多余的已忽略");
+  }
+
+  function bindDrop(){
+    var area = qs(".photo-area");
+    if(!area) return;
+    var add = area.querySelector(".photo-add");
+
+    function hasFiles(e){
+      var t = e.dataTransfer && e.dataTransfer.types;
+      if(!t) return false;
+      for(var i = 0; i < t.length; i++){ if(String(t[i]).toLowerCase() === "files") return true; }
+      return false;
+    }
+    function highlight(on){
+      if(!add) return;
+      if(on) add.classList.add("dragover");
+      else add.classList.remove("dragover");
+    }
+
+    ["dragenter", "dragover"].forEach(function(ev){
+      area.addEventListener(ev, function(e){
+        if(!hasFiles(e)) return;
+        e.preventDefault(); e.stopPropagation();
+        try { e.dataTransfer.dropEffect = "copy"; } catch(err){}
+        highlight(true);
+      }, false);
+    });
+    ["dragleave", "dragend"].forEach(function(ev){
+      area.addEventListener(ev, function(e){
+        if(!hasFiles(e)) return;
+        e.preventDefault(); e.stopPropagation();
+        highlight(false);
+      }, false);
+    });
+    area.addEventListener("drop", function(e){
+      if(!hasFiles(e)) return;
+      e.preventDefault(); e.stopPropagation();
+      highlight(false);
+      var files = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files : [];
+      if(!imageFiles(files).length){ toast("请拖入图片文件"); return; }
+      feedFiles(files);
+    }, false);
+
+    // 粘贴图片（仅当记录弹窗打开时）
+    D.addEventListener("paste", function(e){
+      var mask = qs("#modal-mask");
+      if(!mask || !mask.classList || !mask.classList.contains("show")) return;
+      var files = [];
+      var cd = e.clipboardData;
+      if(cd && cd.files && cd.files.length) files = Array.prototype.slice.call(cd.files);
+      else if(cd && cd.items){
+        for(var i = 0; i < cd.items.length; i++){
+          if(cd.items[i].kind === "file"){
+            var f = cd.items[i].getAsFile();
+            if(f) files.push(f);
+          }
+        }
+      }
+      files = imageFiles(files);
+      if(!files.length) return;
+      e.preventDefault();
+      feedFiles(files);
+    });
+  }
+
+  /* ---------------- 包装渲染函数：每次重绘后重新装饰 ---------------- */
+  function wrapRenderers(){
+    safe(function(){
+      if(typeof W.renderModalPhotos === "function" && !W.renderModalPhotos.__pvWrap){
+        var orig = W.renderModalPhotos;
+        var wrapped = function(){
+          var r = orig.apply(this, arguments);
+          safe(refresh);
+          return r;
+        };
+        wrapped.__pvWrap = true;
+        W.renderModalPhotos = wrapped;
+      }
+    });
+
+    // 章节页照片也装饰一下（时间线重绘后保持可点）
+    safe(function(){
+      if(typeof W.renderChapter === "function" && !W.renderChapter.__pvWrap){
+        var orig2 = W.renderChapter;
+        var wrapped2 = function(){
+          var r = orig2.apply(this, arguments);
+          safe(function(){
+            decorateTimeline();
+          });
+          return r;
+        };
+        wrapped2.__pvWrap = true;
+        W.renderChapter = wrapped2;
+      }
+    });
+  }
+
+  function photosOfId(id){
+    try {
+      for(var i = 0; i < ITEMS.length; i++){
+        if(ITEMS[i].id === id){
+          var r = records[ITEMS[i]._id] || {};
+          var arr = r["照片"] || [];
+          return arr.length;
+        }
+      }
+    } catch(e){}
+    return 0;
+  }
+
+  function decorateTimeline(){
+    qsa(".tl-photo").forEach(function(c){
+      c.setAttribute("title", "点击放大");
+      c.setAttribute("role", "button");
+      c.setAttribute("tabindex", "0");
+    });
+    // 一张记录有多张照片时，在时间线照片上标「+N」
+    qsa("#timeline .tl-item").forEach(function(item){
+      var ph = item.querySelector(".tl-photo");
+      if(!ph) return;
+      var oc = item.getAttribute("onclick") || "";
+      var m = /openModal\((\d+)\)/.exec(oc);
+      if(!m) return;
+      var n = photosOfId(Number(m[1]));
+      if(n > 1){
+        ph.classList.add("multi");
+        ph.setAttribute("data-more", "+" + (n - 1));
+        ph.setAttribute("title", "共 " + n + " 张，点击放大");
+      } else {
+        ph.classList.remove("multi");
+        ph.removeAttribute("data-more");
+      }
+    });
+  }
+
+  /* ---------------- 启动 ---------------- */
+  function boot(){
+    safe(ensureHead);
+    safe(refresh);
+    safe(bindOpeners);
+    safe(bindDrop);
+    safe(wrapRenderers);
+    safe(decorateTimeline);
+    safe(refresh);
+    try {
+      W.__PHOTOVIEW__ = {
+        open: function(i){ openViewer(modalPhotoList(), i || 0); return true; },
+        close: function(){ closeViewer(); return true; },
+        isOpen: function(){ return !!(viewer && viewer.classList.contains("show")); },
+        count: function(){ return photoCount(); }
+      };
+    } catch(e){}
+  }
+
+  if(D.readyState === "loading"){
+    D.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
 })();
 
 </script>
