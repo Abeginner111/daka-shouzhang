@@ -11,6 +11,7 @@ import io
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -18,6 +19,7 @@ OWNER = "Abeginner111"
 REPO = "daka-shouzhang"
 BRANCH = "main"
 API = "https://api.github.com"
+SITE_URL = "https://Abeginner111.github.io/daka-shouzhang/"
 HERE = os.path.dirname(os.path.abspath(__file__))
 FILES = ["index.html", "schema.sql"]
 
@@ -49,6 +51,37 @@ def req(method, path, token, body=None, dry=False):
         raise RuntimeError("HTTP %s %s -> %s %s" % (method, path, e.code, detail))
     except urllib.error.URLError as e:
         raise RuntimeError("NETWORK %s %s -> %s" % (method, path, e.reason))
+
+
+def site_is_live():
+    try:
+        r = urllib.request.Request(SITE_URL, headers={
+            "User-Agent": "workbuddy-pages-deploy", "Cache-Control": "no-cache"})
+        with urllib.request.urlopen(r, timeout=20) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+def verify_live_content():
+    print("\n=== STEP 5: live site content ===")
+    try:
+        r = urllib.request.Request(SITE_URL + "?v=" + str(int(time.time())), headers={
+            "User-Agent": "workbuddy-pages-deploy", "Cache-Control": "no-cache"})
+        with urllib.request.urlopen(r, timeout=30) as resp:
+            body = resp.read()
+            status = resp.status
+        txt = body.decode("utf-8", "replace")
+        built_in = "sxailwwjfgcvyqsrzioq.supabase.co" in txt
+        stale = "YOUR_PROJECT" in txt
+        print("  HTTP %s | bytes %d | built-in config: %s | old placeholder: %s" %
+              (status, len(body), built_in, stale))
+        if stale:
+            print("  Pages is still serving the previous build. Wait 1-2 minutes and recheck.")
+        elif built_in:
+            print("  live page is the new build, no connection config needed.")
+    except Exception as e:
+        print("  live check skipped: %s" % e)
 
 
 def get_token(args):
@@ -104,8 +137,9 @@ def main():
                 else:
                     raise
         body = {
-            "message": "Add love 100-things workbench" if name == "index.html"
-                       else "Add Supabase schema + RLS",
+            "message": ("Update" if sha else "Add") +
+                       (" love 100-things workbench (built-in Supabase config)"
+                        if name == "index.html" else " Supabase schema + setup notes"),
             "content": payloads[name],
             "branch": BRANCH,
         }
@@ -115,25 +149,39 @@ def main():
         if not args.dry_run:
             print("  uploaded %-12s commit %s" % (name, str(out.get("commit", {}).get("sha", ""))[:7]))
 
-    print("\n=== STEP 3: enable GitHub Pages ===")
+    print("\n=== STEP 3: GitHub Pages ===")
     pages_path = "/repos/%s/%s/pages" % (OWNER, REPO)
     source = {"branch": BRANCH, "path": "/"}
     if args.dry_run:
+        print("  [dry] GET %s (is the site already live?)" % SITE_URL)
         req("GET", pages_path, token, dry=True)
         req("POST", pages_path, token, body={"source": source}, dry=True)
+        print("  [dry] if site is already HTTP 200, all Pages API calls are skipped")
+    elif site_is_live():
+        print("  site already live: HTTP 200 %s" % SITE_URL)
+        print("  skip Pages API -> the PAT only needs Contents: Read/Write")
     else:
         enabled = False
         try:
             cur = req("GET", pages_path, token)
             enabled = True
-            print("  Pages already enabled: %s" % cur.get("html_url", ""))
+            print("  Pages already configured: %s" % cur.get("html_url", ""))
+            cur_src = cur.get("source") or {}
+            if cur_src.get("branch") == BRANCH and cur_src.get("path") == "/":
+                print("  source already %s / root, no PATCH needed" % BRANCH)
+            else:
+                print("  source mismatch, attempting PATCH")
+                try:
+                    req("PATCH", pages_path, token, body={"source": source})
+                except RuntimeError as e:
+                    if "403" in str(e):
+                        print("  no Pages permission; leaving config unchanged")
+                    else:
+                        raise
         except RuntimeError as e:
             if "-> 404 " not in str(e):
                 raise
-        if enabled:
-            req("PATCH", pages_path, token, body={"source": source})
-            print("  source ensured: %s / root" % BRANCH)
-        else:
+        if not enabled:
             try:
                 req("POST", pages_path, token, body={"source": source})
                 print("  Pages enabled: %s / root" % BRANCH)
@@ -167,8 +215,9 @@ def main():
                       (name, len(remote), len(local), remote == local))
             except Exception as e:
                 print("  %-12s verify failed: %s" % (name, e))
-        print("\n  NOTE: first Pages build takes 1-2 minutes; open the URL afterwards.")
-        print("  Next: open the site -> fill Supabase URL + publishable key in the config box.")
+        print("\n  NOTE: Pages rebuild takes 1-2 minutes; open the URL afterwards.")
+        print("  Next: open the site -> log in / sign up; connection config is built in.")
+        verify_live_content()
     else:
         req("GET", pages_path, token, dry=True)
         print("\n[dry-run] nothing was sent. Token present: %s" % ("yes" if token else "no"))

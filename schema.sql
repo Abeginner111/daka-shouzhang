@@ -12,13 +12,16 @@
 --     （不关的话新注册要收确认邮件才能登录）
 --  4. Authentication → URL Configuration：Site URL 填你的 Pages 地址
 --     https://<用户名>.github.io/<仓库名>/
---  5. Project Settings → API：复制 Project URL 和 publishable key
+--  5. Project Settings → API：取 Project URL 和 publishable key
 --     （旧版叫 anon key；绝对不要填 service_role / secret key，那个会绕过 RLS）
---     打开 Pages 页面，在「连接配置」里直接填这两项即可（存在本机浏览器，不写回仓库）；
---     也可以改 index.html 开头的 var CFG 硬编码，但那样会随公开仓库公开。
+--     这两项已内置在 index.html 的 BUILTIN 里，正常打开页面即用，无需每次填写。
+--     publishable key 本来就是设计成可公开的，放进公开仓库无妨——数据由 RLS 按账号隔离。
+--     若以后换项目：页面「账号 → 更改云端连接配置」里改（只存本机浏览器，不写回仓库），
+--     或直接改 index.html 里的 BUILTIN 两行后重新上传。
 --  6. GitHub 新建 public 仓库 → 上传 index.html → Settings → Pages →
 --     Source 选 Deploy from a branch / main / (root) → Save，等 1~2 分钟
---  7. 首次打开点「注册并初始化 100 件小事」；之后任何设备用同一账号登录
+--  7. 首次打开点「注册并初始化 100 件小事」；之后换设备只需登录同一账号，
+--     不用再填连接配置（配置随页面走，登录态才跟浏览器走）
 --
 -- 【安全模型】登录账号就是数据隔离边界。RLS 保证每个账号只能读写自己的行。
 -- 公开仓库里只有 HTML 和一个不带权限的 publishable key，别人拿到链接也看不到你的记录。

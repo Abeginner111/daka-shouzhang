@@ -505,12 +505,14 @@
     <div id="gate-title" style="font-size:19px;font-weight:600;margin-bottom:8px">登录以同步手账</div>
     <div id="gate-desc" style="font-size:13px;color:var(--ink-soft);line-height:1.7;margin-bottom:18px">数据存在你自己的云端项目里，登录后多设备自动同步。</div>
     <div id="gate-config" style="display:none;font-size:13px;line-height:1.8;color:var(--ink-soft);background:var(--line-soft);border-radius:10px;padding:14px;margin-bottom:16px">
-      先按 <b>schema.sql</b> 建表、关闭邮箱确认，再填这两项（来自 Supabase → Project Settings → API）：<br>
+      连接信息已内置，正常打开无需填写。<br>
+      仅当你要<b>换一个 Supabase 项目</b>时才改下面两项（改完只存本机浏览器，会覆盖内置值；不会写回仓库）：<br>
       <input id="cfg-url" type="url" placeholder="https://xxxx.supabase.co" style="width:100%;font-size:16px;padding:11px;border:1px solid var(--line);border-radius:10px;margin:10px 0 8px">
       <input id="cfg-key" type="text" placeholder="publishable key（sb_publishable_…）" style="width:100%;font-size:16px;padding:11px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px">
       <div id="cfg-error" style="font-size:13px;color:#a32d2d;min-height:20px"></div>
       <button onclick="saveCfgFromGate()" style="width:100%;min-height:44px;font-size:15px;border:0;border-radius:10px;background:var(--accent);color:#fff;cursor:pointer">保存并连接</button>
-      <div style="margin-top:10px"><span style="color:#a32d2d">切勿填 service_role / secret key</span>，那会绕过权限控制。这两个值只存在你本机浏览器里，不会写回仓库。</div>
+      <button onclick="closeGate()" style="width:100%;min-height:44px;font-size:14px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink-soft);cursor:pointer;margin-top:8px">返回（用内置配置）</button>
+      <div style="margin-top:10px"><span style="color:#a32d2d">切勿填 service_role / secret key</span>，那会绕过权限控制。内置的 publishable key 本就可公开，打卡数据仍按账号隔离。</div>
     </div>
     <div id="gate-form">
       <input id="gate-email" type="email" autocomplete="username" placeholder="邮箱" style="width:100%;font-size:16px;padding:12px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px">
@@ -528,19 +530,25 @@
 
 <script>
 
-/* ============ 配置 ============
-   两种方式：① 直接在页面的「连接配置」里填；② 改下面这两行硬编码。
-   值来自 Supabase → Project Settings → API：Project URL + publishable key（旧版叫 anon key）。
-   绝不要用 service_role / secret key，那会绕过行级权限。
-   页面里填的值存本机 localStorage，不写回仓库；源码里硬编码的值会随公开仓库公开。
+/* ============ 连接配置 ============
+   本项目的连接信息已内置在 BUILTIN 里，打开页面即可使用，无需每次填写。
+   这两个值来自 Supabase → Project Settings → API，publishable key 本来就是设计成可公开的，
+   写进公开仓库无妨：能不能读写数据由数据库的 RLS 按登录账号决定，不靠隐藏 key。
+   绝不要把 service_role / secret key 填进来，那会绕过行级权限。
+   若以后换了 Supabase 项目：在页面「账号 → 更改云端连接配置」里改（只存本机浏览器，
+   会覆盖内置值），或直接改下面 BUILTIN 两行后重新上传本文件。
 */
 var CFG_STORE_KEY = "love100_gh_cfg";
+var BUILTIN = {
+  url: "https://sxailwwjfgcvyqsrzioq.supabase.co",
+  key: "sb_publishable_HFR7wD0L3wXn49eJ_8LKTg_CxUDia-T"
+};
 var CFG = (function(){
   try {
     var c = JSON.parse(localStorage.getItem(CFG_STORE_KEY) || "null");
     if(c && c.url && c.key) return { url: c.url, key: c.key };
   } catch(e){}
-  return { url: "https://YOUR_PROJECT.supabase.co", key: "YOUR_PUBLISHABLE_OR_ANON_KEY" };
+  return { url: BUILTIN.url, key: BUILTIN.key };
 })();
 var TABLE = "love_items";
 var CFG_TABLE = "love_config";
@@ -571,7 +579,8 @@ var pollTimer = null;
 var pollStarted = false;
 
 function isConfigured(){
-  return !!(CFG.url && CFG.url.indexOf("YOUR_PROJECT") === -1 && CFG.key && CFG.key.indexOf("YOUR_") === -1);
+  return !!(/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(CFG.url || "")
+    && CFG.key && !/(^sb_secret_|service_role)/i.test(CFG.key));
 }
 function readSession(){ try { return JSON.parse(localStorage.getItem(SESS_KEY)) || null; } catch(e){ return null; } }
 function writeSession(s){
@@ -799,16 +808,16 @@ function openGate(mode){
   document.getElementById("gate-config").style.display = isCfg ? "block" : "none";
   document.getElementById("gate-form").style.display = isCfg ? "none" : "block";
   document.getElementById("gate-logout").style.display = (mode === "switch") ? "block" : "none";
-  document.getElementById("gate-title").textContent = isCfg ? "还差一步配置" : (mode === "switch" ? "账号" : "登录以同步手账");
+  document.getElementById("gate-title").textContent = isCfg ? "更改云端连接配置" : (mode === "switch" ? "账号" : "登录以同步手账");
   document.getElementById("gate-desc").textContent = isCfg
-    ? "把下面两项填上，就能连到你自己的云端项目。"
+    ? "连接信息已内置，通常不用改。仅在换 Supabase 项目时填写下面两项。"
     : (mode === "switch" ? ("当前账号：" + ((session && session.email) || "未知")) : "数据存在你自己的云端项目里，登录后多设备自动同步。");
   document.getElementById("gate-error").textContent = "";
   document.getElementById("cfg-error").textContent = "";
   document.getElementById("gate-reconfig").style.display = (mode === "switch") ? "block" : "none";
   if(isCfg){
-    document.getElementById("cfg-url").value = CFG.url.indexOf("YOUR_PROJECT") === -1 ? CFG.url : "";
-    document.getElementById("cfg-key").value = CFG.key.indexOf("YOUR_") === -1 ? CFG.key : "";
+    document.getElementById("cfg-url").value = CFG.url || "";
+    document.getElementById("cfg-key").value = CFG.key || "";
   }
 }
 function saveCfgFromGate(){

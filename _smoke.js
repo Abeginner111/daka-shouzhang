@@ -35,7 +35,7 @@ global.clearInterval = () => {};
 
 const probe = `
 ;globalThis.__probe = {
-  isConfigured: isConfigured,
+  isConfigured: isConfigured, openGate: openGate,
   setCfg: function(u,k){ CFG.url=u; CFG.key=k; },
   writeSession: writeSession, loadConfig: loadConfig, loadAll: loadAll,
   toDbRow: toDbRow, getCats: function(){ return CATS; },
@@ -45,14 +45,21 @@ const probe = `
 new Function(js + probe)();
 const P = globalThis.__probe;
 
-console.log('--- 场景 1：未填配置时的首屏 ---');
+console.log('--- 场景 1：内置配置、免填写首屏 ---');
 console.log('isConfigured:', P.isConfigured(), '| gate:', elCache['auth-gate'].style.display,
   '| config:', elCache['gate-config'].style.display,
   '| form:', elCache['gate-form'].style.display,
   '| sync:', elCache['sync-text'].textContent);
-if (P.isConfigured() !== false) throw new Error('配置态判断错误');
-if (elCache['auth-gate'].style.display !== 'flex') throw new Error('配置引导未显示');
-if (elCache['gate-config'].style.display !== 'block') throw new Error('配置说明未显示');
+if (P.isConfigured() !== true) throw new Error('内置配置未生效');
+if (elCache['auth-gate'].style.display !== 'flex') throw new Error('未登录时应显示登录遮罩');
+if (elCache['gate-config'].style.display !== 'none') throw new Error('不应再弹配置引导');
+if (elCache['gate-form'].style.display !== 'block') throw new Error('应直接显示登录/注册表单');
+P.openGate('config');
+if (elCache['gate-config'].style.display !== 'block') throw new Error('手动更改配置入口失效');
+if (String(elCache['cfg-url'].value).indexOf('sxailwwjfgcvyqsrzioq') < 0) throw new Error('配置框未预填内置 URL');
+if (String(elCache['cfg-key'].value).indexOf('sb_publishable_') !== 0) throw new Error('配置框未预填内置 key');
+P.openGate('login');
+console.log('内置 URL 已预填，可手动覆盖：PASS');
 
 console.log('--- 场景 2：配置齐全后读写云端 ---');
 P.setCfg('https://demo.supabase.co', 'sb_publishable_test');
